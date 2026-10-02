@@ -1,0 +1,39 @@
+services:
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: virusbot-clamav
+    restart: unless-stopped
+    volumes:
+      - clamav-db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | timeout 5 nc 127.0.0.1 3310 | grep -q PONG"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - virusbot-net
+
+  bot:
+    build: .
+    container_name: virusbot-bot
+    restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - virusbot-net
+
+networks:
+  virusbot-net:
+    driver: bridge
+
+volumes:
+  clamav-db:
